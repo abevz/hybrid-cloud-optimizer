@@ -29,3 +29,6 @@ credentials.json
 .terraform/
 *.tfstate
 *.tfstate.*
+
+# External symlinks
+Hybrid-Cloud-Cost-Optimizer-Original.md
