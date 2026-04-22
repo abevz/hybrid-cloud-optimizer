@@ -1,3 +1,4 @@
+// Package main is the entry point for the hybrid-cloud-optimizer controller.
 package main
 
 import (

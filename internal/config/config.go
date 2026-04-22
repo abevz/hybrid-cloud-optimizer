@@ -1,3 +1,4 @@
+// Package config provides environment variable loading and validation for the controller.
 package config
 
 import (

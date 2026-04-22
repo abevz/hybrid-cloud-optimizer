@@ -1,3 +1,4 @@
+// Package cost provides AWS Pricing API client with caching for cost estimation.
 package cost
 
 import (

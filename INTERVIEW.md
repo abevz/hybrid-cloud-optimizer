@@ -45,7 +45,7 @@
 func ProvideDecisionEngine(i *do.Injector) (*engine.DecisionEngine, error) {
     proxmoxClient := do.MustInvoke[*proxmox.Client](i)
     pricingClient := do.MustInvoke[*aws.PricingClient](i)
-    
+
     return engine.New(proxmoxClient, pricingClient), nil
 }
 ```

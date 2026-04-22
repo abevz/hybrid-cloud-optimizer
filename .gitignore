@@ -32,3 +32,16 @@ credentials.json
 
 # External symlinks
 Hybrid-Cloud-Cost-Optimizer-Original.md
+
+# Claude Code local config
+.claude/
+
+# Test coverage
+coverage.out
+coverage.html
+*.coverprofile
+
+# Editor/OS temp
+*.bak
+*.tmp
+*~

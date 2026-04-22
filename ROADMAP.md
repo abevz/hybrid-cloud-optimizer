@@ -1,7 +1,7 @@
 # Hybrid Cloud Resource Optimizer (HCRO) - Implementation Roadmap
 
-**Timeline**: March 10 - April 19, 2026 (40 days)  
-**Mode**: Balanced Showcase (50% working MVP + 50% docs/demo)  
+**Timeline**: March 10 - April 19, 2026 (40 days)
+**Mode**: Balanced Showcase (50% working MVP + 50% docs/demo)
 **Effort**: 6-8 hours/day after AWS SAA exam (March 10)
 
 ---

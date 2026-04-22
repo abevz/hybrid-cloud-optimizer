@@ -51,10 +51,10 @@
 
 ### Infrastructure Stack
 
-**Kubernetes**: v1.33.x  
-**CNI**: Cilium (eBPF-based networking)  
-**Node OS**: Ubuntu 22.04 LTS  
-**VPN**: Tailscale (dev) → WireGuard (prod)  
+**Kubernetes**: v1.33.x
+**CNI**: Cilium (eBPF-based networking)
+**Node OS**: Ubuntu 22.04 LTS
+**VPN**: Tailscale (dev) → WireGuard (prod)
 
 **Why Cilium CNI?**
 - ✅ **Hybrid cloud support**: Native support for cross-datacenter pod networking
@@ -2128,12 +2128,12 @@ locals {
 resource "aws_instance" "wireguard_server" {
   ami           = local.instance_config.ami
   instance_type = local.instance_config.type
-  
+
   vpc_security_group_ids = [aws_security_group.wireguard.id]
   subnet_id              = aws_subnet.public.id
-  
+
   user_data = file("${path.module}/wireguard_server_init.sh")
-  
+
   tags = {
     Name = "hcro-wireguard-server"
     Project = "hybrid-cloud-optimizer"
@@ -2144,7 +2144,7 @@ resource "aws_security_group" "wireguard" {
   name        = "hcro-wireguard-sg"
   description = "Allow WireGuard UDP traffic"
   vpc_id      = aws_vpc.main.id
-  
+
   # WireGuard UDP port
   ingress {
     from_port   = 51820
@@ -2152,7 +2152,7 @@ resource "aws_security_group" "wireguard" {
     protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   # SSH (для управления, можно ограничить твоим IP)
   ingress {
     from_port   = 22
@@ -2160,7 +2160,7 @@ resource "aws_security_group" "wireguard" {
     protocol    = "tcp"
     cidr_blocks = ["YOUR_IP/32"]
   }
-  
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -2525,7 +2525,7 @@ TOTAL:                      ~4-5 GB/месяц ✅
    ```bash
    # Generate new server keys
    wg genkey | tee /etc/wireguard/server_private.key.new | wg pubkey
-   
+
    # Update config, restart
    systemctl restart wg-quick@wg0
    ```
@@ -2550,7 +2550,7 @@ TOTAL:                      ~4-5 GB/месяц ✅
      period              = 300
      statistic           = "Average"
      threshold           = 80
-     
+
      dimensions = {
        InstanceId = aws_instance.wireguard_server.id
      }
@@ -2829,6 +2829,6 @@ Pod scheduled on new node
 
 ---
 
-**Last Updated:** 2026-02-19  
-**MVP Status:** Ready for implementation  
+**Last Updated:** 2026-02-19
+**MVP Status:** Ready for implementation
 **Estimated Effort:** 7 weeks (1 developer)

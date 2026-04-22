@@ -77,7 +77,7 @@ kubebuilder create api \
    ```go
    func (r *HybridWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
        log := log.FromContext(ctx)
-       
+
        // 1. Fetch HybridWorkload CR
        var hybridWorkload schedulingv1alpha1.HybridWorkload
        if err := r.Get(ctx, req.NamespacedName, &hybridWorkload); err != nil {
@@ -87,7 +87,7 @@ kubebuilder create api \
            }
            return ctrl.Result{}, fmt.Errorf("failed to get HybridWorkload: %w", err)
        }
-       
+
        // 2. Handle deletion (finalizer pattern)
        finalizerName := "scheduling.hybrid-cloud.dev/finalizer"
        if hybridWorkload.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -103,7 +103,7 @@ kubebuilder create api \
            if controllerutil.ContainsFinalizer(&hybridWorkload, finalizerName) {
                log.Info("cleaning up resources before deletion")
                // TODO Week 2: Delete Karpenter NodePool here
-               
+
                controllerutil.RemoveFinalizer(&hybridWorkload, finalizerName)
                if err := r.Update(ctx, &hybridWorkload); err != nil {
                    return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
@@ -111,7 +111,7 @@ kubebuilder create api \
            }
            return ctrl.Result{}, nil
        }
-       
+
        // 3. Update status to "Pending" (initial state)
        if hybridWorkload.Status.PlacementDecision == "" {
            hybridWorkload.Status.PlacementDecision = "Pending"
@@ -121,12 +121,12 @@ kubebuilder create api \
            }
            log.Info("set initial status to Pending")
        }
-       
+
        // 4. TODO Day 9-11: Call decision engine, update placement decision
        log.Info("reconciliation complete (decision engine not implemented yet)",
            "workload", hybridWorkload.Name,
            "namespace", hybridWorkload.Namespace)
-       
+
        // 5. Requeue after 5 minutes for periodic checks
        return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
    }
@@ -138,13 +138,13 @@ kubebuilder create api \
        "context"
        "fmt"
        "time"
-       
+
        apierrors "k8s.io/apimachinery/pkg/api/errors"
        ctrl "sigs.k8s.io/controller-runtime"
        "sigs.k8s.io/controller-runtime/pkg/client"
        "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
        "sigs.k8s.io/controller-runtime/pkg/log"
-       
+
        schedulingv1alpha1 "github.com/abevz/hybrid-cloud-optimizer/api/v1alpha1"
    )
    ```
@@ -171,27 +171,27 @@ kubebuilder create api \
 2. **Write basic reconciliation test**:
    ```go
    package controller
-   
+
    import (
        "context"
        "testing"
        "time"
-       
+
        . "github.com/onsi/ginkgo/v2"
        . "github.com/onsi/gomega"
        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
        "k8s.io/apimachinery/pkg/types"
        ctrl "sigs.k8s.io/controller-runtime"
        "sigs.k8s.io/controller-runtime/pkg/client/fake"
-       
+
        schedulingv1alpha1 "github.com/abevz/hybrid-cloud-optimizer/api/v1alpha1"
    )
-   
+
    var _ = Describe("HybridWorkload Controller", func() {
        Context("When reconciling a HybridWorkload", func() {
            It("should set status to Pending on first reconciliation", func() {
                ctx := context.Background()
-               
+
                // Create test HybridWorkload
                workload := &schedulingv1alpha1.HybridWorkload{
                    ObjectMeta: metav1.ObjectMeta{
@@ -202,7 +202,7 @@ kubebuilder create api \
                        MinCost: true,
                    },
                }
-               
+
                // Create fake client with scheme
                scheme := runtime.NewScheme()
                _ = schedulingv1alpha1.AddToScheme(scheme)
@@ -211,13 +211,13 @@ kubebuilder create api \
                    WithObjects(workload).
                    WithStatusSubresource(workload).
                    Build()
-               
+
                // Create reconciler
                reconciler := &HybridWorkloadReconciler{
                    Client: fakeClient,
                    Scheme: scheme,
                }
-               
+
                // Reconcile
                req := ctrl.Request{
                    NamespacedName: types.NamespacedName{
@@ -226,11 +226,11 @@ kubebuilder create api \
                    },
                }
                result, err := reconciler.Reconcile(ctx, req)
-               
+
                // Assertions
                Expect(err).ToNot(HaveOccurred())
                Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
-               
+
                // Verify status updated
                var updatedWorkload schedulingv1alpha1.HybridWorkload
                err = fakeClient.Get(ctx, req.NamespacedName, &updatedWorkload)
@@ -245,9 +245,9 @@ kubebuilder create api \
    ```bash
    make test
    ```
-   
+
    **Expected output**: Tests pass (green checkmarks).
-   
+
    **If tests fail**: Debug with verbose output:
    ```bash
    go test -v ./internal/controller/...
@@ -263,7 +263,7 @@ kubebuilder create api \
    ```bash
    make install
    ```
-   
+
    Verify:
    ```bash
    kubectl get crd | grep hybridworkload
@@ -274,7 +274,7 @@ kubebuilder create api \
    ```bash
    make run
    ```
-   
+
    **Expected output**:
    ```
    INFO    controller-runtime.metrics      Metrics server is starting to listen
@@ -301,7 +301,7 @@ kubebuilder create api \
          cpu: "500m"
          memory: "512Mi"
    EOF
-   
+
    # Apply
    kubectl apply -f config/samples/scheduling_v1alpha1_hybridworkload.yaml
    ```
@@ -311,12 +311,12 @@ kubebuilder create api \
      ```
      INFO    reconciliation complete (decision engine not implemented yet)
      ```
-   
+
 5. **Verify status updated**:
    ```bash
    kubectl get hybridworkload test-workload -o yaml
    ```
-   
+
    **Expected**:
    ```yaml
    status:
@@ -328,7 +328,7 @@ kubebuilder create api \
    ```bash
    kubectl delete hybridworkload test-workload
    ```
-   
+
    **Watch controller logs**: Should see cleanup message before CR is deleted.
 
 7. **Stop controller**: `Ctrl+C` in first terminal.
@@ -343,17 +343,17 @@ kubebuilder create api \
    - Open text editor, write:
      ```
      feat: implement HybridWorkload controller reconciliation skeleton
-     
+
      This commit add basic reconciliation logic for HybridWorkload CRD.
      Controller fetch CR, update status to "Pending", and handle deletion
      with finalizer pattern. Decision engine not implemented yet - will
      add in Day 9-11.
-     
+
      Test:
      - Unit test for reconciliation (fake client)
      - Manual test with kubectl apply/delete
      - Verify status field updated correctly
-     
+
      Next step: implement Proxmox metrics client (Day 8)
      ```
 
@@ -362,21 +362,21 @@ kubebuilder create api \
      - [ ] Grammar: "add" → "adds", "fetch" → "fetches"
      - [ ] Clarity: Is it clear what changed?
      - [ ] Details: Did I mention tests?
-   
+
 3. **Refine** (fix grammar):
    ```
    feat: implement HybridWorkload controller reconciliation skeleton
-   
+
    This commit adds basic reconciliation logic for HybridWorkload CRD.
    Controller fetches CR, updates status to "Pending", and handles deletion
    with finalizer pattern. Decision engine is not implemented yet - will
    add in Day 9-11.
-   
+
    Tests:
    - Unit test for reconciliation (fake client)
    - Manual test with kubectl apply/delete
    - Verify status field updates correctly
-   
+
    Next step: implement Proxmox metrics client (Day 8)
    ```
 
@@ -388,52 +388,52 @@ kubebuilder create api \
    ```
 
 5. **Start `docs/architecture.md`** (500 words, broken English):
-   
+
    Create file:
    ```bash
    mkdir -p docs
    touch docs/architecture.md
    ```
-   
+
    Write (in broken English, no AI help):
    ```markdown
    # Hybrid Cloud Resource Optimizer - Architecture
-   
+
    ## Problem Statement
-   
+
    Running workloads in cloud is expensive. AWS EC2 cost money every hour.
    But I have Proxmox server at home that is already running and not cost
    additional money for compute. Problem is: how to decide which workload
    should run on Proxmox (cheap) and which should run on AWS (fast)?
-   
+
    This project solve this problem by building Kubernetes operator that
    automatically decide placement based on cost and latency preference.
-   
+
    ## System Components
-   
+
    System has 5 main components:
-   
+
    1. **HybridWorkload CRD** - Custom resource that user create to describe
       workload preference (minCost, minLatency, resource requirements)
-   
+
    2. **Controller** - Watch HybridWorkload resources and run reconciliation
       loop. Fetch CR, call decision engine, update status field.
-   
+
    3. **Decision Engine** - Core logic. Take workload spec and decide: run
       on Proxmox or AWS? Consider cost, latency, available capacity.
-   
+
    4. **Proxmox Metrics Client** - Query Proxmox API to get node capacity
       (CPU, memory available). Use this for capacity check.
-   
+
    5. **Karpenter Manager** - Create/delete Karpenter NodePool when decision
       is "run on AWS". Karpenter then provision EC2 instance automatically.
-   
+
    ## Architecture Diagram
-   
+
    [TODO: Add mermaid diagram]
-   
+
    ## How It Works (Workflow)
-   
+
    1. User create HybridWorkload CR with spec (minCost: true, CPU: 500m, etc)
    2. Controller watch CR, trigger reconciliation
    3. Controller call Decision Engine with workload spec
@@ -452,9 +452,9 @@ kubebuilder create api \
       - Read HybridWorkload decision
       - Patch Deployment nodeSelector to match decision
       - Pods get scheduled to correct location
-   
+
    ## Technology Stack
-   
+
    - **Language**: Go 1.23+
    - **Framework**: Kubebuilder + controller-runtime
    - **DI**: samber/do (dependency injection)
@@ -462,9 +462,9 @@ kubebuilder create api \
    - **VPN**: Tailscale (dev), WireGuard (prod)
    - **IaC**: Terraform (WireGuard VPN on AWS)
    - **Cost**: AWS Free Tier (t2.micro, 100 GB data transfer/month)
-   
+
    ## Next Documents
-   
+
    - `decision-logic.md` - Algorithm details
    - `proxmox-integration.md` - How to query Proxmox API
    - `karpenter-integration.md` - NodePool management
