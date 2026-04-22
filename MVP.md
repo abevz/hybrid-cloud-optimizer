@@ -1,45 +1,45 @@
 # Hybrid Cloud Cost Optimizer - MVP Specification
 
-> **Production-ready Kubernetes Controller** для динамического управления рабочими нагрузками между on-premise (Proxmox) и AWS на основе стоимости и утилизации ресурсов.
+> **Production-ready Kubernetes Controller** for dynamic workload placement between on-premise (Proxmox) and AWS based on cost and resource utilization.
 
 ---
 
-## 📋 MVP Scope: Что строим в первой версии
+## 📋 MVP Scope: What we're building in v1
 
-### ✅ В MVP
+### ✅ In MVP
 
-1. **Единый Kubernetes кластер**
-   - **Control Plane**: на Proxmox (on-premise)
-   - **Worker Nodes**: Proxmox (базовые) + AWS EC2 (burst capacity)
-   - **Hybrid scheduling**: поды могут быть на любых нодах
+1. **Single Kubernetes cluster**
+   - **Control Plane**: on Proxmox (on-premise)
+   - **Worker Nodes**: Proxmox (baseline) + AWS EC2 (burst capacity)
+   - **Hybrid scheduling**: pods can run on any node
 
 2. **HybridWorkload CRD**
-   - Аннотации для приоритета (`priority: low|medium|high`)
+   - Priority annotations (`priority: low|medium|high`)
    - Budget constraints (`maxMonthlyCostUSD`)
-   - Требования к ресурсам (CPU/Memory)
-   - **Автоматическое создание NodePool в AWS** через Karpenter при необходимости
+   - Resource requirements (CPU/Memory)
+   - **Automatic NodePool creation in AWS** via Karpenter when needed
 
 3. **Cost-Aware Scheduler Logic**
-   - Мониторинг утилизации Proxmox нод
-   - Расчет стоимости AWS EC2 инстансов (Pricing API)
-   - Решение: "Proxmox (бесплатно) vs AWS (платно)"
-   - **Автоматическое создание Karpenter NodePool** для AWS burst
+   - Proxmox node utilization monitoring
+   - AWS EC2 instance cost calculation (Pricing API)
+   - Decision: "Proxmox (free) vs AWS (paid)"
+   - **Automatic Karpenter NodePool creation** for AWS burst
 
 4. **Production-Ready Foundation**
    - Structured logging (`slog`)
    - Graceful shutdown
    - Health checks (`/healthz`, `/readyz`)
-   - Prometheus metrics (базовые)
+   - Prometheus metrics (basic)
 
 5. **Testing**
    - Unit tests (table-driven, mocks)
    - Integration tests (`envtest`)
-   - E2E тест (kind cluster)
+   - E2E test (kind cluster)
 
-### 🚫 Откладываем на Phase 2
+### 🚫 Deferred to Phase 2
 
-- ~~Migration между платформами~~ → Manual re-deploy OK
-- ~~OpenTelemetry tracing~~ → slog достаточно для MVP
+- ~~Migration between platforms~~ → Manual re-deploy OK
+- ~~OpenTelemetry tracing~~ → slog sufficient for MVP
 - ~~Helm Chart~~ → Plain manifests OK
 - ~~Vault integration~~ → Environment variables OK
 - ~~Validating/Mutating Webhooks~~ → ✅ **Moved to MVP** (validating webhook for CRD spec)
@@ -1915,7 +1915,7 @@ kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/late
 
 ### Overview
 
-Hybrid K8s cluster требует **secure network connectivity** между Proxmox (on-premise) и AWS (cloud). Для MVP мы сравниваем три решения по критериям: стоимость, сложность, production-readiness.
+A hybrid K8s cluster requires **secure network connectivity** between Proxmox (on-premise) and AWS (cloud). For MVP we compare three solutions by criteria: cost, complexity, production-readiness.
 
 ### 💰 Cost Comparison
 
@@ -1925,18 +1925,18 @@ Hybrid K8s cluster требует **secure network connectivity** между Pro
 | **WireGuard (Free Tier)** | **$0** (year 1) | 30 min | ✅ Yes | ✅ **Best for new AWS accounts** |
 | **WireGuard (t4g.nano)** | $3-5 | 30 min | ✅ Yes | ✅ **Best after Free Tier** |
 | **Tailscale** | $0 (Free tier) | 5 min | ⚠️ Yes (3rd-party) | ✅ **Fastest POC** |
-| **OpenVPN на EC2** | $3-5 | 1-2 hours | ✅ Yes | ⚠️ Slower than WireGuard |
+| **OpenVPN on EC2** | $3-5 | 1-2 hours | ✅ Yes | ⚠️ Slower than WireGuard |
 
 **💡 Data Transfer Costs (all options except Tailscale):**
-- **First 100 GB/месяц:** $0 (AWS Free Tier permanent)
-- **101-1024 GB/месяц:** $0.09/GB
-- **Real hybrid K8s traffic (optimized):** ~4-5 GB/месяц
-- **Cost:** $0/мес ✅ (далеко в пределах Free Tier лимита)
+- **First 100 GB/month:** $0 (AWS Free Tier permanent)
+- **101-1024 GB/month:** $0.09/GB
+- **Real hybrid K8s traffic (optimized):** ~4-5 GB/month
+- **Cost:** $0/month ✅ (well within Free Tier limit)
 
 ### 📊 Decision Matrix
 
-**For MVP Development:** Используй **Tailscale** (быстрый старт, бесплатно)
-**For Production Demo/Portfolio:** Используй **WireGuard** (контроль, cost story для интервью)
+**For MVP Development:** Use **Tailscale** (fast start, free)
+**For Production Demo/Portfolio:** Use **WireGuard** (full control, cost story for interviews)
 
 ---
 
@@ -1946,37 +1946,37 @@ Hybrid K8s cluster требует **secure network connectivity** между Pro
 ```
 Proxmox Nodes (Tailscale clients)
       ↓
-Tailscale Mesh Network (координация через Tailscale servers)
+Tailscale Mesh Network (coordination via Tailscale servers)
       ↓
 AWS EC2 Worker Nodes (Tailscale clients)
 ```
 
 **Pros:**
-- ✅ **$0/месяц** (Free tier: до 100 devices)
-- ✅ **5 минут setup** (apt install + tailscale up)
-- ✅ **Zero config NAT traversal** (работает за любым NAT/firewall)
-- ✅ **Mesh VPN**: каждая нода видит друг друга напрямую
-- ✅ **ACL support**: можно ограничить доступ между группами нод
+- ✅ **$0/month** (Free tier: up to 100 devices)
+- ✅ **5-minute setup** (apt install + tailscale up)
+- ✅ **Zero config NAT traversal** (works behind any NAT/firewall)
+- ✅ **Mesh VPN**: every node sees each other directly
+- ✅ **ACL support**: can restrict access between node groups
 
 **Cons:**
-- ⚠️ Third-party dependency (Tailscale координирует peer discovery)
-- ⚠️ Latency может быть выше если нет direct p2p connection (fallback на DERP relay)
+- ⚠️ Third-party dependency (Tailscale coordinates peer discovery)
+- ⚠️ Latency may be higher without direct p2p connection (fallback to DERP relay)
 
 **Setup Instructions:**
 
 ```bash
-# ===== На Proxmox Master Node =====
-# 1. Установить Tailscale
+# ===== On Proxmox Master Node =====
+# 1. Install Tailscale
 curl -fsSL https://tailscale.com/install.sh | sh
 
-# 2. Авторизоваться (откроется браузер)
+# 2. Authenticate (browser will open)
 tailscale up
 
-# 3. Получить Tailscale IP
+# 3. Get Tailscale IP
 tailscale ip -4
 # Output: 100.64.0.1
 
-# 4. Настроить kube-apiserver слушать на Tailscale IP
+# 4. Configure kube-apiserver to listen on Tailscale IP
 # /etc/kubernetes/manifests/kube-apiserver.yaml
 spec:
   containers:
@@ -1989,17 +1989,17 @@ spec:
 systemctl restart kubelet
 
 
-# ===== На Proxmox Worker Nodes =====
+# ===== On Proxmox Worker Nodes =====
 curl -fsSL https://tailscale.com/install.sh | sh
 tailscale up
 
 
-# ===== На AWS EC2 Instances (добавить в User Data) =====
+# ===== On AWS EC2 Instances (add to User Data) =====
 #!/bin/bash
 # Install Tailscale
 curl -fsSL https://tailscale.com/install.sh | sh
 
-# Connect (используй pre-auth key из Tailscale admin console)
+# Connect (use pre-auth key from Tailscale admin console)
 tailscale up --authkey=tskey-auth-xxxxxxxxxxxxx \
              --advertise-routes=172.16.0.0/16  # AWS VPC CIDR
 
@@ -2010,21 +2010,21 @@ systemctl restart kubelet
 
 
 # ===== Join AWS node to Proxmox cluster =====
-# На Proxmox master получить join command:
+# On Proxmox master, get join command:
 kubeadm token create --print-join-command
 
-# На AWS EC2:
-kubeadm join 100.64.0.1:6443 \  # Tailscale IP Proxmox master
+# On AWS EC2:
+kubeadm join 100.64.0.1:6443 \  # Tailscale IP of Proxmox master
   --token <token> \
   --discovery-token-ca-cert-hash sha256:<hash>
 
 
 # ===== Verify connectivity =====
-# На Proxmox:
+# On Proxmox:
 kubectl get nodes -o wide
-# Должны увидеть AWS ноды с Tailscale IPs (100.x.x.x)
+# Should see AWS nodes with Tailscale IPs (100.x.x.x)
 
-# Проверить pod-to-pod connectivity:
+# Verify pod-to-pod connectivity:
 kubectl run test-proxmox --image=nginx -n default \
   --overrides='{"spec":{"nodeSelector":{"platform":"proxmox"}}}'
 
@@ -2035,17 +2035,17 @@ kubectl exec test-proxmox -- curl http://$(kubectl get pod test-aws -o jsonpath=
 ```
 
 **Cost Breakdown:**
-- Tailscale Free tier: **$0/месяц**
-- Data transfer: P2P (не через Tailscale relay, если есть direct connectivity)
-- **Total: $0/месяц**
+- Tailscale Free tier: **$0/month**
+- Data transfer: P2P (not via Tailscale relay when direct connectivity exists)
+- **Total: $0/month**
 
 **When to Use:**
-- 🎯 Week 1-3: Rapid development (фокус на controller logic, не на network debugging)
-- 🎯 POC для быстрой демонстрации концепции
+- 🎯 Week 1-3: Rapid development (focus on controller logic, not network debugging)
+- 🎯 POC for quick concept demonstration
 
 ---
 
-### Option 2: WireGuard на EC2 (Recommended for Production Demo)
+### Option 2: WireGuard on EC2 (Recommended for Production Demo)
 
 **Architecture:**
 ```
@@ -2060,68 +2060,68 @@ AWS VPC (EC2 worker nodes)
 
 | Instance Type | vCPU | RAM | Network | Free Tier | After 12 months |
 |---------------|------|-----|---------|-----------|-----------------|
-| **t2.micro** | 1 | 1 GB | Low-Moderate | ✅ **$0/мес** | $7.49/мес |
-| **t3.micro** | 2 | 1 GB | Up to 5 Gbps | ✅ **$0/мес** | $8.76/мес |
-| **t4g.nano** | 2 | 512 MB | Up to 5 Gbps | ❌ $3.04/мес | $3.04/мес |
+| **t2.micro** | 1 | 1 GB | Low-Moderate | ✅ **$0/month** | $7.49/month |
+| **t3.micro** | 2 | 1 GB | Up to 5 Gbps | ✅ **$0/month** | $8.76/month |
+| **t4g.nano** | 2 | 512 MB | Up to 5 Gbps | ❌ $3.04/month | $3.04/month |
 
 **💡 Recommended Strategy:**
 ```
 Year 1 (new AWS account):  t2.micro or t3.micro (Free Tier)
-  └─ Total: $0/месяц (только data transfer > 100 GB)
+  └─ Total: $0/month (only data transfer > 100 GB costs)
 
-Year 2+:                   t4g.nano (ARM64, дешевле долгосрочно)
-  └─ Total: $3.04/месяц
+Year 2+:                   t4g.nano (ARM64, cheaper long-term)
+  └─ Total: $3.04/month
 ```
 
 **Pros:**
-- ✅ **$0-3/месяц** (t2.micro Free Tier первый год, затем t4g.nano)
-- ✅ **Полный контроль** конфигурации
-- ✅ **Высокая производительность** (WireGuard kernel module, multi-threaded)
-- ✅ **Production-ready** (используется в production у многих компаний)
-- ✅ **Показывает технические навыки** (network engineering, VPN protocols)
-- ✅ **Cost optimization story** для интервью ($0 vs $63 AWS VPN)
+- ✅ **$0-3/month** (t2.micro Free Tier year 1, then t4g.nano)
+- ✅ **Full control** over configuration
+- ✅ **High performance** (WireGuard kernel module, multi-threaded)
+- ✅ **Production-ready** (used in production by many companies)
+- ✅ **Demonstrates technical skills** (network engineering, VPN protocols)
+- ✅ **Cost optimization story** for interviews ($0 vs $63 AWS VPN)
 
 **Cons:**
-- ⚠️ Ручная настройка (но можно автоматизировать через Terraform)
-- ⚠️ Single point of failure (можно решить через Auto Scaling Group + Route53 health checks)
-- ⚠️ Free Tier ограничен 750 часами/месяц (только 1 инстанс)
-- ⚠️ Data transfer > 100 GB/месяц платный ($0.09/GB)
+- ⚠️ Manual setup (can be automated via Terraform)
+- ⚠️ Single point of failure (can be solved via Auto Scaling Group + Route53 health checks)
+- ⚠️ Free Tier limited to 750 hours/month (single instance only)
+- ⚠️ Data transfer > 100 GB/month is paid ($0.09/GB)
 
-**🚨 Free Tier Limits (12 месяцев для новых аккаунтов):**
-- EC2: **750 часов/месяц** t2.micro или t3.micro
-- Data Transfer OUT: **100 GB/месяц** (aggregated)
+**🚨 Free Tier Limits (12 months for new accounts):**
+- EC2: **750 hours/month** t2.micro or t3.micro
+- Data Transfer OUT: **100 GB/month** (aggregated)
 - EBS: **30 GB** General Purpose SSD
-- Elastic IP: **Бесплатно** если attached к running instance
+- Elastic IP: **Free** when attached to running instance
 
 **Setup Instructions:**
 
-#### Step 1: Deploy WireGuard Server в AWS
+#### Step 1: Deploy WireGuard Server on AWS
 
-**Terraform код (Free Tier variant):**
+**Terraform code (Free Tier variant):**
 ```hcl
 # wireguard.tf
 
-# Variables для гибкости
+# Variables for flexibility
 variable "use_free_tier" {
   description = "Use Free Tier eligible instance (t2.micro). Set to false for t4g.nano after 12 months."
   type        = bool
-  default     = true  # Начни с Free Tier
+  default     = true  # Start with Free Tier
 }
 
 variable "your_public_ip" {
   description = "Your public IP for SSH access (security)"
   type        = string
-  default     = "0.0.0.0/0"  # Замени на свой IP!
+  default     = "0.0.0.0/0"  # Replace with your IP!
 }
 
 # Instance selection
 locals {
   instance_config = var.use_free_tier ? {
     type = "t2.micro"
-    ami  = "ami-0c55b159cbfafe1f0"  # Ubuntu 22.04 x86_64 (обнови для региона)
+    ami  = "ami-0c55b159cbfafe1f0"  # Ubuntu 22.04 x86_64 (update for your region)
   } : {
     type = "t4g.nano"
-    ami  = "ami-0a1b2c3d4e5f67890"  # Ubuntu 22.04 ARM64 (обнови для региона)
+    ami  = "ami-0a1b2c3d4e5f67890"  # Ubuntu 22.04 ARM64 (update for your region)
   }
 }
 
@@ -2153,7 +2153,7 @@ resource "aws_security_group" "wireguard" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # SSH (для управления, можно ограничить твоим IP)
+  # SSH (for management, restrict to your IP)
   ingress {
     from_port   = 22
     to_port     = 22
@@ -2199,7 +2199,7 @@ Address = 10.200.0.1/24
 ListenPort = 51820
 PrivateKey = $(cat /etc/wireguard/server_private.key)
 
-# NAT для трафика из VPN в AWS VPC
+# NAT for traffic from VPN into AWS VPC
 PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
 
@@ -2227,14 +2227,14 @@ sysctl -p
 systemctl enable wg-quick@wg0
 systemctl start wg-quick@wg0
 
-# Log server public key (найдешь в /var/log/cloud-init-output.log)
+# Log server public key (find it in /var/log/cloud-init-output.log)
 echo "WireGuard Server Public Key:"
 cat /etc/wireguard/server_public.key
 ```
 
 #### Step 2: Configure Proxmox Nodes
 
-**На каждой Proxmox ноде (master + workers):**
+**On each Proxmox node (master + workers):**
 
 ```bash
 # 1. Install WireGuard
@@ -2244,13 +2244,13 @@ apt-get install -y wireguard resolvconf
 wg genkey | tee /etc/wireguard/client_private.key | wg pubkey > /etc/wireguard/client_public.key
 chmod 600 /etc/wireguard/client_private.key
 
-# 3. Сохрани public key (нужен для добавления в server config)
+# 3. Save public key (needed to add to server config)
 cat /etc/wireguard/client_public.key
 
 # 4. Configure client
 cat > /etc/wireguard/wg0.conf <<EOF
 [Interface]
-Address = 10.200.0.2/24  # Уникальный IP для каждой ноды (10.200.0.2, .3, .4)
+Address = 10.200.0.2/24  # Unique IP per node (10.200.0.2, .3, .4)
 PrivateKey = $(cat /etc/wireguard/client_private.key)
 
 [Peer]
@@ -2271,11 +2271,11 @@ ping 172.16.0.10 # AWS VPC private IP (EC2 worker node)
 
 #### Step 3: Update AWS Server Config
 
-**После генерации ключей на Proxmox нодах:**
+**After generating keys on Proxmox nodes:**
 
 ```bash
-# На AWS WireGuard server
-# Добавить Proxmox peer public keys в /etc/wireguard/wg0.conf
+# On AWS WireGuard server
+# Add Proxmox peer public keys to /etc/wireguard/wg0.conf
 wg set wg0 peer PROXMOX_MASTER_PUBLIC_KEY allowed-ips 10.200.0.2/32
 wg set wg0 peer PROXMOX_WORKER1_PUBLIC_KEY allowed-ips 10.200.0.3/32
 
@@ -2288,7 +2288,7 @@ wg show
 
 #### Step 4: K8s Configuration
 
-**На Proxmox Master (kube-apiserver):**
+**On Proxmox Master (kube-apiserver):**
 ```yaml
 # /etc/kubernetes/manifests/kube-apiserver.yaml
 spec:
@@ -2298,12 +2298,12 @@ spec:
     - --advertise-address=10.200.0.2  # WireGuard IP Proxmox master
 ```
 
-**На AWS EC2 Worker Nodes (kubelet):**
+**On AWS EC2 Worker Nodes (kubelet):**
 ```bash
-# User Data для AWS EC2
+# User Data for AWS EC2
 #!/bin/bash
-# Установить WireGuard client на EC2 (опционально, если нужен direct access)
-# Либо использовать AWS VPC routing через WireGuard server
+# Install WireGuard client on EC2 (optional, if direct access needed)
+# Or use AWS VPC routing via WireGuard server
 
 # Kubelet config
 echo "KUBELET_EXTRA_ARGS=--node-ip=$(hostname -I | awk '{print $1}')" > /etc/default/kubelet
@@ -2312,24 +2312,24 @@ systemctl restart kubelet
 
 **Join command:**
 ```bash
-# На AWS EC2
-kubeadm join 10.200.0.2:6443 \  # WireGuard IP Proxmox master
+# On AWS EC2
+kubeadm join 10.200.0.2:6443 \  # WireGuard IP of Proxmox master
   --token <token> \
   --discovery-token-ca-cert-hash sha256:<hash>
 ```
 
 **Cost Breakdown (Free Tier - Year 1):**
-- EC2 t2.micro/t3.micro: **$0/месяц** (750 hours Free Tier)
-- Elastic IP: **$0** (если attached к running instance)
-- EBS 8 GB: **$0** (в пределах 30 GB лимита)
-- Data Transfer Out (50 GB/мес hybrid K8s): **$0** (в пределах 100 GB лимита)
-- **Total Year 1: $0/месяц** 🎉
+- EC2 t2.micro/t3.micro: **$0/month** (750 hours Free Tier)
+- Elastic IP: **$0** (when attached to running instance)
+- EBS 8 GB: **$0** (within 30 GB limit)
+- Data Transfer Out (50 GB/month hybrid K8s): **$0** (within 100 GB limit)
+- **Total Year 1: $0/month** 🎉
 
 **Cost Breakdown (After Free Tier or t4g.nano):**
-- EC2 t4g.nano: **$3.04/месяц**
-- Elastic IP: **$0** (если attached)
-- Data Transfer Out (50 GB/мес): **$0** (AWS always includes 100 GB free)
-- **Total Year 2+: $3.04/месяц**
+- EC2 t4g.nano: **$3.04/month**
+- Elastic IP: **$0** (when attached)
+- Data Transfer Out (50 GB/month): **$0** (AWS always includes 100 GB free)
+- **Total Year 2+: $3.04/month**
 
 **Comparison:**
 ```
@@ -2347,43 +2347,43 @@ Savings with Free Tier: $36.48 (50% off!)
 ```
 
 **When to Use:**
-- 🎯 **Year 1:** t2.micro или t3.micro (Free Tier, новый AWS аккаунт)
-- 🎯 **Year 2+:** Переключиться на t4g.nano (ARM64, лучше performance/cost ratio)
-- 🎯 **Интервью:** Cost optimization story + Terraform automation
+- 🎯 **Year 1:** t2.micro or t3.micro (Free Tier, new AWS account)
+- 🎯 **Year 2+:** Switch to t4g.nano (ARM64, better performance/cost ratio)
+- 🎯 **Interview:** Cost optimization story + Terraform automation
 
 ---
 
 ### Option 3: AWS Site-to-Site VPN (NOT Recommended for MVP)
 
-**Cost:** $36/месяц (VPN connection) + $27/месяц (data transfer) = **$63/месяц**
+**Cost:** $36/month (VPN connection) + $27/month (data transfer) = **$63/month**
 
 **Why Expensive:**
-- AWS VPN Gateway стоит $0.05/час **независимо от использования**
-- 720 часов/месяц × $0.05 = $36 fixed cost
+- AWS VPN Gateway costs $0.05/hour **regardless of usage**
+- 720 hours/month × $0.05 = $36 fixed cost
 
 **When to Use:**
-- ❌ Не для MVP (overkill)
-- ✅ Enterprise production с compliance требованиями (IPsec, BGP routing, high availability)
+- ❌ Not for MVP (overkill)
+- ✅ Enterprise production with compliance requirements (IPsec, BGP routing, high availability)
 
 ---
 
 ### Roadmap: VPN Evolution
 
-**Рекомендуемый путь для проекта:**
+**Recommended path for this project:**
 
 ```
 Week 1-3: Tailscale ($0)
-  ↓ Быстрый старт, фокус на controller
-Week 4-5: WireGuard ($3/мес)
+  ↓ Fast start, focus on controller
+Week 4-5: WireGuard ($3/month)
   ↓ Production demo, Terraform IaC
-Week 6+: Cost optimization story для интервью
-  ↓ "$3 vs $63" (показываешь engineering decision making)
+Week 6+: Cost optimization story for interviews
+  ↓ "$3 vs $63" (demonstrates engineering decision making)
 ```
 
-**Demo для интервью:**
-1. **Show Terraform код** для WireGuard setup
-2. **Explain trade-offs**: WireGuard (контроль, $3) vs Tailscale (простота, $0) vs AWS VPN (enterprise, $63)
-3. **Cost optimization story**: "Сэкономили $60/месяц, выбрав WireGuard для hybrid K8s"
+**Interview demo:**
+1. **Show Terraform code** for WireGuard setup
+2. **Explain trade-offs**: WireGuard (full control, $3) vs Tailscale (simplicity, $0) vs AWS VPN (enterprise, $63)
+3. **Cost optimization story**: "Saved $60/month by choosing WireGuard for hybrid K8s"
 
 ---
 
@@ -2423,95 +2423,95 @@ Week 6+: Cost optimization story для интервью
 
 ---
 
-### 💡 Data Transfer Optimization для Free Tier
+### 💡 Data Transfer Optimization for Free Tier
 
-**Проблема:** Free Tier дает только **100 GB/месяц** data transfer OUT.
+**Problem:** Free Tier gives only **100 GB/month** data transfer OUT.
 
-**Решение:** Минимизируй трафик через VPN.
+**Solution:** Minimize traffic through VPN.
 
-#### Стратегии оптимизации:
+#### Optimization Strategies:
 
-**1. Используй VPN только для control plane traffic**
+**1. Use VPN only for control plane traffic**
 ```yaml
-# kube-apiserver на Proxmox слушает на WireGuard IP
-# Только control plane traffic через VPN:
+# kube-apiserver on Proxmox listens on WireGuard IP
+# Only control plane traffic goes through VPN:
 #   - kubelet → API server heartbeats
 #   - kubectl commands
 #   - Controller reconciliation
 
-# Pod-to-Pod traffic НЕ через VPN:
-#   - Поды на Proxmox не общаются с подами на AWS напрямую
-#   - Используй Service Mesh (Istio/Linkerd) только если нужно
+# Pod-to-Pod traffic NOT through VPN:
+#   - Pods on Proxmox don't talk to pods on AWS directly
+#   - Use Service Mesh (Istio/Linkerd) only if needed
 ```
 
-**2. Metrics & Logs — локально**
+**2. Metrics & Logs — keep local**
 ```yaml
-# Prometheus на Proxmox собирает метрики только с Proxmox нод
-# Prometheus на AWS собирает метрики только с AWS нод
-# Grafana объединяет через federation (минимальный traffic)
+# Prometheus on Proxmox scrapes only Proxmox nodes
+# Prometheus on AWS scrapes only AWS nodes
+# Grafana combines via federation (minimal traffic)
 
-# Loki/ELK — раздельные инстансы
+# Loki/ELK — separate instances
 ```
 
-**3. Image Registry — используй ECR в AWS**
+**3. Image Registry — use ECR on AWS**
 ```bash
-# Для AWS нод — пулить из ECR (free in-region transfer)
-# Для Proxmox нод — локальный registry или Harbor
+# For AWS nodes — pull from ECR (free in-region transfer)
+# For Proxmox nodes — local registry or Harbor
 
-# Избегай pulling multi-GB images через VPN!
+# Avoid pulling multi-GB images over VPN!
 ```
 
-**Реальный расчет VPN трафика (детально):**
+**Real VPN traffic breakdown (detailed):**
 ```
 1. Kubelet heartbeats (5 AWS nodes):
-   - Frequency: каждые 10 секунд
+   - Frequency: every 10 seconds
    - Payload: ~3 KB per update
-   - Traffic: 5 nodes × 3 KB × 8640 updates/день = ~130 MB/день
-   - Per month: ~4 GB/месяц
+   - Traffic: 5 nodes × 3 KB × 8640 updates/day = ~130 MB/day
+   - Per month: ~4 GB/month
 
 2. Pod status updates:
-   - Frequency: ~70 events/день (create, delete, health checks)
+   - Frequency: ~70 events/day (create, delete, health checks)
    - Payload: ~5 KB per event
-   - Per month: ~10 MB/месяц
+   - Per month: ~10 MB/month
 
 3. HCRO Controller → AWS API:
-   - AWS Pricing API: 1 call/час × 50 KB = ~36 MB/месяц
-   - Karpenter NodePool CRUD: 5 ops/день × 2 KB = ~0.3 MB/месяц
-   - Per month: ~40 MB/месяц
+   - AWS Pricing API: 1 call/hour × 50 KB = ~36 MB/month
+   - Karpenter NodePool CRUD: 5 ops/day × 2 KB = ~0.3 MB/month
+   - Per month: ~40 MB/month
 
 4. kubectl commands (dev usage):
-   - Commands: 10/день × 10 KB = ~3 MB/месяц
-   - Logs fetching: 5/день × 100 KB = ~15 MB/месяц
-   - Per month: ~18 MB/месяц
+   - Commands: 10/day × 10 KB = ~3 MB/month
+   - Logs fetching: 5/day × 100 KB = ~15 MB/month
+   - Per month: ~18 MB/month
 
-5. Prometheus metrics (ТОЛЬКО если scrape через VPN):
-   - ⚠️ 5 nodes × 100 KB × 5760 scrapes/день = ~86 GB/месяц
-   - ✅ Solution: Local Prometheus на AWS → 0 GB через VPN
+5. Prometheus metrics (ONLY if scraping over VPN):
+   - ⚠️ 5 nodes × 100 KB × 5760 scrapes/day = ~86 GB/month
+   - ✅ Solution: Local Prometheus on AWS → 0 GB over VPN
 
-6. Image pulls (ТОЛЬКО если registry на Proxmox):
-   - ⚠️ 200 MB/image × 5 pulls/неделя × 4 = ~4 GB/месяц
-   - ✅ Solution: Use ECR (AWS) → 0 GB через VPN
+6. Image pulls (ONLY if registry on Proxmox):
+   - ⚠️ 200 MB/image × 5 pulls/week × 4 = ~4 GB/month
+   - ✅ Solution: Use ECR (AWS) → 0 GB over VPN
 
 ────────────────────────────────────────────────────
-ИТОГО (с правильной архитектурой):
-  Kubelet + Pod updates:    ~4 GB/месяц
-  Controller + kubectl:     ~60 MB/месяц
+TOTAL (with correct architecture):
+  Kubelet + Pod updates:    ~4 GB/month
+  Controller + kubectl:     ~60 MB/month
   Prometheus (local):       0 GB
   Images (ECR):             0 GB
 ────────────────────────────────────────────────────
-TOTAL:                      ~4-5 GB/месяц ✅
-                           (в пределах 100 GB Free Tier!)
+GRAND TOTAL:                ~4-5 GB/month ✅
+                            (well within 100 GB Free Tier!)
 ```
 
-**Бонус:** Первые **100 GB data transfer OUT всегда бесплатны** в AWS (даже после Free Tier 12 месяцев!)
+**Bonus:** First **100 GB data transfer OUT is always free** in AWS (even after Free Tier 12 months!)
 
 ---
 
 ### Security Considerations
 
-**Для Production:**
+**For Production:**
 
-1. **Limit SSH access** к WireGuard server (только твой IP):
+1. **Limit SSH access** to WireGuard server (your IP only):
    ```hcl
    ingress {
      from_port   = 22
@@ -2521,7 +2521,7 @@ TOTAL:                      ~4-5 GB/месяц ✅
    }
    ```
 
-2. **Rotate WireGuard keys** периодически:
+2. **Rotate WireGuard keys** periodically:
    ```bash
    # Generate new server keys
    wg genkey | tee /etc/wireguard/server_private.key.new | wg pubkey
@@ -2530,7 +2530,7 @@ TOTAL:                      ~4-5 GB/месяц ✅
    systemctl restart wg-quick@wg0
    ```
 
-3. **Enable AWS VPC Flow Logs** для audit:
+3. **Enable AWS VPC Flow Logs** for audit:
    ```hcl
    resource "aws_flow_log" "vpc" {
      vpc_id          = aws_vpc.main.id
@@ -2682,18 +2682,18 @@ make e2e-test
 
 ## ❓ FAQ: Proxmox + AWS Architecture
 
-### Q1: Как реализована связка Proxmox + AWS?
+### Q1: How is the Proxmox + AWS integration implemented?
 
-**A:** Это **hybrid Kubernetes cluster**:
+**A:** It's a **hybrid Kubernetes cluster**:
 
-1. **Control Plane (мастер)**: на Proxmox (on-premise)
+1. **Control Plane (master)**: on Proxmox (on-premise)
 2. **Worker Nodes**:
-   - **Статичные**: 3-5 VM на Proxmox (platform=proxmox)
-   - **Динамические**: EC2 инстансы в AWS (platform=aws, создаются Karpenter)
+   - **Static**: 3-5 VMs on Proxmox (platform=proxmox)
+   - **Dynamic**: EC2 instances in AWS (platform=aws, created by Karpenter)
 
 **Network connectivity:**
-- VPN или AWS Direct Connect между Proxmox и AWS VPC
-- Kubelet на AWS нодах подключается к API server на Proxmox
+- VPN or AWS Direct Connect between Proxmox and AWS VPC
+- Kubelet on AWS nodes connects to API server on Proxmox
 
 **Example:**
 ```bash
@@ -2707,21 +2707,21 @@ ip-10-0-1-23.ec2      Ready    <none>          platform=aws,cost=paid,karpenter.
 
 ---
 
-### Q2: Нужен ли Kubernetes в Proxmox?
+### Q2: Is Kubernetes needed on Proxmox?
 
-**A:** Да, но **только worker nodes**. Control plane может быть на Proxmox или в AWS.
+**A:** Yes, but **worker nodes only**. Control plane can be on Proxmox or in AWS.
 
-**MVP подход:**
-- **Control Plane**: на Proxmox (экономия, подходит для dev/staging)
-- **Worker Nodes**: Proxmox (базовые) + AWS (burst)
+**MVP approach:**
+- **Control Plane**: on Proxmox (cost saving, suitable for dev/staging)
+- **Worker Nodes**: Proxmox (baseline) + AWS (burst)
 
-**Production вариант:**
+**Production variant:**
 - **Control Plane**: AWS EKS (managed, HA)
 - **Worker Nodes**: Proxmox (dev) + AWS (prod)
 
 ---
 
-### Q3: Как контроллер принимает решения?
+### Q3: How does the controller make placement decisions?
 
 **Decision tree:**
 
@@ -2748,15 +2748,15 @@ ip-10-0-1-23.ec2      Ready    <none>          platform=aws,cost=paid,karpenter.
 
 ---
 
-### Q4: Что делает Karpenter?
+### Q4: What does Karpenter do?
 
-**A:** Karpenter автоматически создает EC2 инстансы в AWS когда:
-1. Controller решил: "нужен AWS"
-2. Controller создал `NodePool` CR
-3. Karpenter подхватывает `NodePool` и:
-   - Запускает EC2 инстанс нужного типа (t3.medium, t3.large, ...)
-   - Подключает его к K8s кластеру (kubelet → API server)
-   - Применяет labels (`platform=aws`, `capacity-type=spot`)
+**A:** Karpenter automatically creates EC2 instances in AWS when:
+1. Controller decides: "AWS burst needed"
+2. Controller creates `NodePool` CR
+3. Karpenter picks up the `NodePool` and:
+   - Launches EC2 instance of the required type (t3.medium, t3.large, ...)
+   - Joins it to the K8s cluster (kubelet → API server)
+   - Applies labels (`platform=aws`, `capacity-type=spot`)
 
 **Lifecycle:**
 ```
@@ -2777,9 +2777,9 @@ Pod scheduled on new node
 
 ---
 
-### Q5: Можно ли использовать EKS вместо self-hosted K8s?
+### Q5: Can EKS be used instead of self-hosted K8s?
 
-**A:** Да, но trade-offs:
+**A:** Yes, but trade-offs:
 
 | Approach | Control Plane | Worker Nodes | Cost | Complexity |
 |----------|--------------|--------------|------|------------|
@@ -2787,7 +2787,7 @@ Pod scheduled on new node
 | **EKS Hybrid** | AWS EKS | Proxmox + AWS EC2 | Medium | High (EKS Anywhere) |
 | **Full EKS** | AWS EKS | AWS EC2 only | High | Low |
 
-**MVP рекомендация:** Self-hosted K8s на Proxmox для dev/staging.
+**MVP recommendation:** Self-hosted K8s on Proxmox for dev/staging.
 
 ---
 
