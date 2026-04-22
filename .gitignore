@@ -1,0 +1,47 @@
+# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+vendor/
+*.test
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.env
+*.pem
+*.key
+credentials.json
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# External symlinks
+Hybrid-Cloud-Cost-Optimizer-Original.md
+
+# Claude Code local config
+.claude/
+
+# Test coverage
+coverage.out
+coverage.html
+*.coverprofile
+
+# Editor/OS temp
+*.bak
+*.tmp
+*~

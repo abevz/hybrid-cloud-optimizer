@@ -1,0 +1,53 @@
+repos:
+  # 1. Base Hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=5000"]
+      - id: detect-private-key
+
+  # 2. Security — secret scanning before push
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+
+  # 3. Golang (system binary — требует локально установленный golangci-lint)
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: go-fmt
+        entry: gofmt -l -w
+        language: system
+        types: [go]
+        pass_filenames: true
+
+      - id: go-mod-tidy
+        name: go-mod-tidy
+        entry: go mod tidy
+        language: system
+        types: [go]
+        pass_filenames: false
+        require_serial: true
+
+      - id: golangci-lint
+        name: golangci-lint
+        entry: golangci-lint run --fix
+        language: system
+        types: [go]
+        require_serial: true
+        pass_filenames: false
+
+  # 4. Terraform — раскомментировать на Week 4 когда появится terraform/wireguard/
+  # - repo: https://github.com/antonbabenko/pre-commit-terraform
+  #   rev: v1.92.0
+  #   hooks:
+  #     - id: terraform_fmt
+  #     - id: terraform_tflint
+  #     - id: terraform_tfsec
