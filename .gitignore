@@ -36,6 +36,10 @@ Hybrid-Cloud-Cost-Optimizer-Original.md
 # Claude Code local config
 .claude/
 
+# Local agent instructions
+AGENTS.md
+CLAUDE.md
+
 # Test coverage
 coverage.out
 coverage.html
