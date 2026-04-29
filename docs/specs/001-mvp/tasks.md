@@ -4,15 +4,15 @@
 
 Goal: establish a compilable operator skeleton and API shape.
 
-- [ ] T001 Initialize or normalize Go module layout.
-- [ ] T002 Add Kubebuilder/controller-runtime project skeleton.
+- [x] T001 Initialize or normalize Go module layout.
+- [x] T002 Add Kubebuilder/controller-runtime project skeleton.
 - [ ] T003 Define `HybridWorkload` API types.
-- [ ] T004 Add CRD generation target.
-- [ ] T005 Add controller manager entrypoint.
-- [ ] T006 Add basic reconciler that watches `HybridWorkload`.
+- [x] T004 Add CRD generation target.
+- [x] T005 Add controller manager entrypoint.
+- [x] T006 Add basic reconciler that watches `HybridWorkload`.
 - [ ] T007 Add typed config loading.
 - [ ] T008 Add unit tests for config loading and validation.
-- [ ] T009 Add lint, format, and test targets.
+- [x] T009 Add lint, format, and test targets.
 
 Deliverable: controller builds, CRD manifests can be generated, and reconciler can
 observe `HybridWorkload` events.

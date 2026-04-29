@@ -99,6 +99,15 @@ Uses `samber/do` provider functions. Imports of `samber/do` must stay in
 One cluster keeps the MVP understandable: one API server, one controller, one
 resource model.
 
+### Local Controller Development
+
+During development, CRDs can be installed into the current Kubernetes context
+with `make install`, while the controller runs locally with `make run`.
+
+This lets the developer test against the Proxmox lab cluster without building
+and pushing a controller image on every change.
+
+
 ### Karpenter for AWS Burst
 
 Karpenter provisions EC2 capacity directly and supports per-workload dynamic

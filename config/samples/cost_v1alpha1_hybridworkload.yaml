@@ -1,0 +1,9 @@
+apiVersion: cost.hybrid.io/v1alpha1
+kind: HybridWorkload
+metadata:
+  labels:
+    app.kubernetes.io/name: hybrid-cloud-optimizer
+    app.kubernetes.io/managed-by: kustomize
+  name: hybridworkload-sample
+spec:
+  # TODO(user): Add fields here

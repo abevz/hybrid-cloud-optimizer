@@ -3,23 +3,41 @@
 ## Test Pyramid
 
 The MVP should start with fast unit tests and add Kubernetes integration tests
-only where the API server behavior matters.
+only where Kubernetes API server behavior matters.
 
 ```text
-E2E: kind cluster, full controller path
-Integration: envtest, fake Kubernetes API server
+E2E: kind cluster, full controller deployment path
+Integration: envtest, local API server and etcd
 Unit: pure Go logic with mocks
+```
+
+## Canonical Commands
+
+Use Kubebuilder Makefile targets as the project test entrypoints.
+
+```bash
+make test
+```
+
+**make test** runs manifest generation, deepcopy generation, formatting, vet,
+envtest setup, and Go tests excluding E2E packages.
+
+Do not use go test ./... as the default project-wide command after Kubebuilder
+scaffolding. Controller tests use envtest and require Kubernetes test binaries
+through KUBEBUILDER_ASSETS or make setup-envtest.
+
+For a fast pure-Go package check that skips envtest and E2E packages:
+
+```bash
+go test $(go list ./... | grep -v /internal/controller | grep -v /test/e2e)
 ```
 
 ## Unit Tests
 
-Run with:
+Unit tests should cover pure business logic and avoid Kubernetes API server
+startup when possible.
 
-```bash
-go test -race ./...
-```
-
-Unit tests should cover:
+Unit test targets include:
 
 - config defaults and validation
 - decision engine placement matrix
@@ -33,18 +51,17 @@ Use table-driven tests with named subtests.
 
 ## Integration Tests
 
-Integration tests should use `envtest` when controller-runtime reconciliation or
-Kubernetes API behavior matters.
+Integration tests use envtest for controller-runtime reconciliation and
+Kubernetes API behavior.
 
 Run with:
-
 ```bash
-go test -v ./test/integration/...
+make test
 ```
 
 Integration tests should cover:
 
-- creating a `HybridWorkload`
+- creating a HybridWorkload
 - status update after reconciliation
 - dry-run behavior
 - finalizer behavior
@@ -52,29 +69,66 @@ Integration tests should cover:
 
 ## E2E Tests
 
-E2E tests should use a local `kind` cluster.
+E2E tests use a local kind cluster and the Kubebuilder scaffolded E2E target.
 
 Run with:
-
 ```bash
-go test -v ./test/e2e/...
+make test-e2e
 ```
 
 E2E tests should cover:
 
-- install CRD and controller
-- apply sample `HybridWorkload`
-- observe status decision
-- validate dry-run does not create external resources
+- installing CRDs and controller manifests
+- applying a sample HybridWorkload
+- observing status decisions
+- validating dry-run behavior
 
 ## Manual Verification
 
-Until the controller skeleton exists, the only meaningful local verification is:
-
+For local development against the current Kubernetes context:
 ```bash
-go test ./...
-go build -o /tmp/hcro-controller ./cmd/controller
+make build
+make install
+make run
+```
+**make install** installs CRDs into the current kubectl context. make run
+starts the controller locally while it talks to that cluster through kubeconfig.
+
+For the Proxmox lab cluster, first confirm the context:
+```bash
+kubectl config current-context
 ```
 
-After Phase 1, manual verification should include applying the CRD to a local
-cluster and watching reconciler logs.
+Then install the CRD and run the controller locally:
+```bash
+make install
+make run
+```
+
+In another terminal, apply a sample resource and inspect it:
+```bash
+kubectl apply -f config/samples/cost_v1alpha1_hybridworkload.yaml
+kubectl get hybridworkloads.cost.hybrid.io
+kubectl describe hybridworkload <name>
+```
+
+
+## Verification
+
+After editing:
+
+```bash
+git diff -- docs/specs/001-mvp/testing.md
+make test
+```
+If envtest binaries are missing, run:
+```bash
+make setup-envtest
+make test
+```
+
+## Assumptions
+
+- Kubebuilder scaffold remains the canonical project structure.
+- E2E tests should use make test-e2e, not direct go test.
+- Proxmox/k8s-lab is used for manual smoke testing, not as a replacement for envtest.
