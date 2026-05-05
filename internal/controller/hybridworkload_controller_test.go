@@ -22,9 +22,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	costv1alpha1 "github.com/abevz/hybrid-cloud-optimizer/api/v1alpha1"
@@ -50,6 +52,27 @@ var _ = Describe("HybridWorkload Controller", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
+					},
+					Spec: costv1alpha1.HybridWorkloadSpec{
+						Priority:            "medium",
+						MaxMonthlyCostCents: 5000,
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("100m"),
+								corev1.ResourceMemory: resource.MustParse("128Mi"),
+							},
+						},
+						WorkloadTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:  "app",
+										Image: "nginx:stable",
+									},
+								},
+							},
+						},
+						CapacityType: "spot",
 					},
 					// TODO(user): Specify other spec details if needed.
 				}

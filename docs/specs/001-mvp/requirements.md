@@ -14,6 +14,9 @@ Required spec fields:
 - workload template
 - capacity type: `spot` or `on-demand`
 
+Money values are business-level USD amounts, but the API representation should
+avoid floating-point CRD fields. Detailed design defines the storage format.
+
 Required status fields:
 
 - phase

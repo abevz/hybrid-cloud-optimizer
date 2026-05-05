@@ -11,10 +11,12 @@ This directory is the SDD version of the legacy root `MVP.md`.
 - [spec.md](spec.md) - product scope and non-goals
 - [requirements.md](requirements.md) - functional and non-functional requirements
 - [design.md](design.md) - architecture, components, and key decisions
+- [detailed-design.md](detailed-design.md) - API, config, controller, status, and testing contracts
 - [tasks.md](tasks.md) - implementation phases and task checklist
 - [testing.md](testing.md) - unit, integration, and E2E testing strategy
 
 ## Working Rule
 
-When implementing a task, update the spec first if the intended behavior changes.
-Then implement, test, and reference the task ID in the Pull Request.
+When implementing a task, update the spec first if the intended behavior changes,
+then update detailed design if contracts change. Implement from the approved
+contract, test, and reference the task ID in the Pull Request.

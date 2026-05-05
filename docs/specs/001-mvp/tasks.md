@@ -6,11 +6,11 @@ Goal: establish a compilable operator skeleton and API shape.
 
 - [x] T001 Initialize or normalize Go module layout.
 - [x] T002 Add Kubebuilder/controller-runtime project skeleton.
-- [ ] T003 Define `HybridWorkload` API types.
+- [x] T003 Implement `HybridWorkload` API types from `detailed-design.md`.
 - [x] T004 Add CRD generation target.
 - [x] T005 Add controller manager entrypoint.
 - [x] T006 Add basic reconciler that watches `HybridWorkload`.
-- [ ] T007 Add typed config loading.
+- [ ] T007 Implement typed config loading from `detailed-design.md`.
 - [ ] T008 Add unit tests for config loading and validation.
 - [x] T009 Add lint, format, and test targets.
 
@@ -21,12 +21,12 @@ observe `HybridWorkload` events.
 
 Goal: implement placement decisions without creating AWS resources.
 
-- [ ] T010 Define scheduler interfaces for metrics, pricing, and health checks.
+- [ ] T010 Implement scheduler interfaces for metrics, pricing, and health checks.
 - [ ] T011 Implement Proxmox metrics client.
 - [ ] T012 Implement AWS pricing client with cache.
 - [ ] T013 Implement VPN health checker.
-- [ ] T014 Implement decision engine.
-- [ ] T015 Add typed retryable errors.
+- [ ] T014 Implement decision engine from `detailed-design.md`.
+- [ ] T015 Add typed retryable errors from `detailed-design.md`.
 - [ ] T016 Add table-driven decision engine tests.
 - [ ] T017 Update reconciler to write placement decision to status.
 
@@ -36,10 +36,10 @@ Deliverable: controller logs and publishes correct placement decisions.
 
 Goal: create AWS burst capacity through Karpenter.
 
-- [ ] T018 Implement Karpenter NodePool manager.
+- [ ] T018 Implement Karpenter NodePool manager from `detailed-design.md`.
 - [ ] T019 Add dry-run behavior.
 - [ ] T020 Add finalizer cleanup for owned NodePools.
-- [ ] T021 Add status fields for NodePool and cost estimate.
+- [ ] T021 Wire NodePool and cost estimate status fields.
 - [ ] T022 Add integration tests for AWS placement path.
 
 Deliverable: AWS placement creates or updates the expected Karpenter NodePool.

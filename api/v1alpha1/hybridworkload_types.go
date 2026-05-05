@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,7 +33,33 @@ type HybridWorkloadSpec struct {
 
 	// foo is an example field of HybridWorkload. Edit hybridworkload_types.go to remove/update
 	// +optional
-	Foo *string `json:"foo,omitempty"`
+	//Foo *string `json:"foo,omitempty"`
+	//
+
+	// Priority determines scheduleing preference (high = always AWS)
+	// +kubebuilder:validation:Enum=low;medium;high
+	// +kubebuilder:default=medium
+	// +kubebuilder:validation:Required
+	Priority string `json:"priority"`
+
+	// MaxMonthlyCostCents is budget constraint for this workload
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Required
+	MaxMonthlyCostCents int64 `json:"maxMonthlyCostCents"`
+
+	// Resource specifies CPU and memory requirements
+	// +kubebuilder:validation:Required
+	Resources corev1.ResourceRequirements `json:"resources"`
+
+	// WorkloadTemplate is the Pod spec for Deployment/StatefulSet
+	// +kubebuilder:validation:Required
+	WorkloadTemplate corev1.PodTemplateSpec `json:"workloadTemplate"`
+
+	// CapacityType for AWS nodes: "spot" or "on-demand"
+	// +kubebuilder:validation:Enum=spot;on-demand
+	// +kubebuilder:validation:Required
+	// +kubebuilder:default=spot
+	CapacityType string `json:"capacityType"`
 }
 
 // HybridWorkloadStatus defines the observed state of HybridWorkload.
@@ -51,15 +78,46 @@ type HybridWorkloadStatus struct {
 	// - "Progressing": the resource is being created or updated
 	// - "Degraded": the resource failed to reach or maintain its desired state
 	//
+
+	// Phase: Pending, Running, Failed
+	// +kubebuilder:validation:Enum=Pending;Running;Failed
+	Phase string `json:"phase,omitempty"`
+
+	// RecommendedPlatform: "proxmox" or "aws" or "pending"
+	// +kubebuilder:validation:Enum=proxmox;aws;pending
+	RecommendedPlatform string `json:"recommendedPlatform,omitempty"`
+
+	// EstimatedMonthlyCostCents for current placement
+	// +kubebuilder:validation:Minimum=0
+	EstimatedMonthlyCostCents int64 `json:"estimatedMonthlyCostCents,omitempty"`
+
+	// KarpenterNodePoolName if AWS burst was created
+	KarpenterNodePoolName string `json:"karpenterNodePoolName,omitempty"`
+
+	// VPNHealth - VPN health state (Healthy, Unhealthy, Unknown)
+	// +kubebuilder:validation:Enum=Healthy;Unhealthy;Unknown
+	VPNHealth string `json:"vpnHealth"`
+
+	// DryRun indicates decision was computed but no resources were created
+	DryRun bool `json:"dryRun,omitempty"`
+
 	// The status of each condition is one of True, False, or Unknown.
 	// +listType=map
 	// +listMapKey=type
 	// +optional
+	// Conditions for status tracking (SchedulingDecision, NodePoolReady, VPNHealthy)
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// LastReconcileTime
+	LastReconcileTime *metav1.Time `json:"lastReconcileTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Priority",type=string,JSONPath=`.spec.priority`
+// +kubebuilder:printcolumn:name="Platform",type=string,JSONPath=`.status.recommendedPlatform`
+// +kubebuilder:printcolumn:name="Cost",type=string,JSONPath=`.status.estimatedMonthlyCostCents`
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 
 // HybridWorkload is the Schema for the hybridworkloads API
 type HybridWorkload struct {
@@ -67,7 +125,7 @@ type HybridWorkload struct {
 
 	// metadata is a standard object metadata
 	// +optional
-	metav1.ObjectMeta `json:"metadata,omitzero"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// spec defines the desired state of HybridWorkload
 	// +required
@@ -75,7 +133,7 @@ type HybridWorkload struct {
 
 	// status defines the observed state of HybridWorkload
 	// +optional
-	Status HybridWorkloadStatus `json:"status,omitzero"`
+	Status HybridWorkloadStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -83,7 +141,7 @@ type HybridWorkload struct {
 // HybridWorkloadList contains a list of HybridWorkload
 type HybridWorkloadList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitzero"`
+	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []HybridWorkload `json:"items"`
 }
 
