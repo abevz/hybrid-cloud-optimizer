@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - cost.hybrid.io
+  resources:
+  - hybridworkloads
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cost.hybrid.io
+  resources:
+  - hybridworkloads/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cost.hybrid.io
+  resources:
+  - hybridworkloads/status
+  verbs:
+  - get
+  - patch
+  - update
