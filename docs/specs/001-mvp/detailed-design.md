@@ -1,9 +1,16 @@
 # Detailed Design
 
 This document is the contract-level design for the MVP. It turns the product
-requirements and architecture into implementation-ready contracts. Implementation
-tasks should follow this document instead of making API, interface, status, or
-retry-policy decisions in code.
+requirements and architecture into implementation-ready contracts.
+Implementation tasks should follow this document instead of making API,
+interface, status, or retry-policy decisions in code.
+
+## Scope Pin
+
+The MVP ships with **CRD schema validation only**. The semantic validating
+webhook described in [Webhook Scope](#webhook) is deferred to Phase 4 and is
+covered by task T026 in [tasks.md](tasks.md). [spec.md](spec.md) MVP Scope is
+aligned with this pin.
 
 ## Source Material
 
@@ -16,7 +23,7 @@ The legacy MVP is the primary design source. The original concept is historical
 context and includes deferred scope such as `CloudCostConfig`, migration
 policies, Vault integration, and OpenTelemetry tracing.
 
-## HybridWorkload API Contract
+## HybridWorkload API Contract {#api-contract}
 
 `HybridWorkload` is the only custom resource in the MVP.
 
@@ -148,32 +155,46 @@ The CRD should expose these `kubectl get` columns:
 - `Cost`: `.status.estimatedMonthlyCostCents`
 - `Phase`: `.status.phase`
 
-## Configuration Contract
+## Configuration Contract {#config-inventory}
 
-Configuration is loaded once at startup into a typed config struct.
+Configuration is loaded once at startup into a typed config struct in
+`internal/config`. Defaults below are the **runtime source of truth** for any
+value not overridden by an environment variable.
 
-Fields:
+### Configuration Inventory
 
-- `AWSRegion`: env `AWS_REGION`, default `us-east-1`
-- `AWSPricingAPIRegion`: fixed default `us-east-1`
-- `ProxmoxScaleOutThreshold`: env `PROXMOX_SCALE_OUT_THRESHOLD`, default `0.85`
-- `ProxmoxScaleBackThreshold`: env `PROXMOX_SCALE_BACK_THRESHOLD`, default `0.70`
-- `VPNEndpoint`: env `VPN_ENDPOINT`, default `10.0.1.1:51820`
-- `KarpenterEnabled`: env `KARPENTER_ENABLED`, default `true`
-- `KarpenterNamespace`: env `KARPENTER_NAMESPACE`, default `karpenter`
-- `LogLevel`: env `LOG_LEVEL`, default `info`
-- `MetricsAddr`: env `METRICS_ADDR`, default `:8080`
-- `ProbeAddr`: env `PROBE_ADDR`, default `:8081`
+| Env Var | Type | Default | Validation | Consuming Task |
+|---------|------|---------|------------|----------------|
+| `AWS_REGION` | string | `us-east-1` | non-empty | T012 |
+| `AWS_PRICING_API_REGION` | string | `us-east-1` | non-empty (fixed; AWS pricing API is regional) | T012 |
+| `PROXMOX_SCALE_OUT_THRESHOLD` | float64 | `0.85` | `0 < x <= 1` AND `> PROXMOX_SCALE_BACK_THRESHOLD` | T007, T014 |
+| `PROXMOX_SCALE_BACK_THRESHOLD` | float64 | `0.70` | `0 < x <= 1` AND `< PROXMOX_SCALE_OUT_THRESHOLD` | T007, T014 |
+| `VPN_ENDPOINT` | string | `10.0.1.1:51820` | non-empty when AWS/Karpenter enabled | T013 |
+| `KARPENTER_ENABLED` | bool | `true` | n/a | T018a |
+| `KARPENTER_NAMESPACE` | string | `karpenter` | RFC 1123 label | T018a |
+| `LOG_LEVEL` | string | `info` | one of `debug`, `info`, `warn`, `error` | T007, T023 |
+| `METRICS_ADDR` | string | `:8080` | `host:port` | T023 |
+| `PROBE_ADDR` | string | `:8081` | `host:port` | T024 |
 
-Validation rules:
+### Validation Rules
 
-- Scale thresholds must be greater than `0` and less than or equal to `1`.
-- Scale-out threshold must be greater than scale-back threshold.
-- `VPNEndpoint` must be non-empty when Karpenter/AWS placement is enabled.
+- Scale thresholds must be `> 0` and `<= 1`.
+- Scale-out threshold must be strictly greater than scale-back threshold (no
+  equality).
+- `VPN_ENDPOINT` must be non-empty when `KARPENTER_ENABLED=true`.
+- `LOG_LEVEL` matched case-insensitively but stored lower-case.
+- Validation runs at startup; the controller MUST refuse to start on invalid
+  config.
+
+### Wiring
+
 - Core services receive config through constructors. Dependency injection, if
-  used, stays in `provider.go` files and the composition root.
+  used, stays in `provider.go` files and the composition root (see
+  [P-001](constitution.md), [P-006](constitution.md)).
+- `internal/config.LoadConfig()` returns the typed struct or an aggregated
+  validation error.
 
-## Scheduler Interfaces And Decision Contract
+## Scheduler Interfaces And Decision Contract {#scheduler-interfaces}
 
 The decision engine owns pure placement policy. It depends on interfaces for
 metrics, pricing, and VPN health so business logic can be unit tested without
@@ -235,7 +256,7 @@ Initial instance type selection:
 - Up to 4 CPU and 8 GiB memory: `t3.large`
 - Above that: `t3.xlarge`
 
-## Controller Reconciliation Design
+## Controller Reconciliation Design {#controller-flow}
 
 The reconciler watches `HybridWorkload`.
 
@@ -267,7 +288,7 @@ Deletion handling:
 - On deletion, delete the owned NodePool before removing the finalizer.
 - Dry-run mode must not create or delete external resources.
 
-## Karpenter NodePool Contract
+## Karpenter NodePool Contract {#karpenter-contract}
 
 NodePool name:
 
@@ -288,13 +309,19 @@ NodePool requirements:
 - node class reference: default EC2 node class for the cluster
 - taint: `platform=aws:NoSchedule`
 
-Implementation note:
+### Karpenter Version Policy
 
-- The exact Karpenter API version must follow the dependency chosen during
-  implementation. The legacy design used `karpenter.sh/v1beta1`; do not hardcode
-  a stale version if the project dependency uses a newer API.
+- The Karpenter API version MUST be taken from the dependency declared in
+  `go.mod` (governed by [P-003](constitution.md)).
+- Legacy design referenced `karpenter.sh/v1beta1`; the project MUST NOT
+  hardcode this version in YAML manifests, prose, or fallback constants.
+- A dedicated unit test asserts that the imported Karpenter API version
+  matches the version registered with the controller-runtime scheme. The test
+  fails the build if the two diverge.
+- When upgrading Karpenter, update `go.mod` first, regenerate manifests with
+  `make manifests`, and rerun the version assertion test.
 
-## Status And Error Semantics
+## Status And Error Semantics {#error-semantics}
 
 Typed errors:
 
@@ -319,28 +346,37 @@ Successful decisions:
 - Dry-run: set `dryRun=true` and record what would have happened in
   `SchedulingDecision`.
 
-## Validation And Webhook Design
+## Validation And Webhook Design {#webhook}
 
-CRD schema validation is the first line of defense:
+### Phase 1 — CRD Schema Validation Only
+
+CRD schema validation is the first and only line of defense in MVP Phase 1:
 
 - priority enum
 - capacity type enum
-- non-negative budget
+- non-negative budget (`Minimum=0`)
 - required `resources`
 - required `workloadTemplate`
 
-Validating webhook is added later for semantic validation that CRD schema cannot
-express well:
+### Phase 4 — Validating Webhook (Deferred, T026)
+
+A validating webhook is added in Phase 4 for semantic validation that CRD
+schema cannot express well:
 
 - CPU request must be non-zero.
 - Memory request must be non-zero.
-- Budget must be non-negative.
+- Budget must be non-negative (defense in depth; redundant with schema).
 - Priority and capacity type checks remain as defensive validation.
+
+The webhook is OUT of scope for Phase 1. [spec.md](spec.md) MVP Scope and
+[tasks.md](tasks.md) Phase boundaries reflect this pin.
+
+### Mutating Webhook
 
 No mutating webhook is required for MVP defaults if Kubebuilder default markers
 cover the field defaults.
 
-## Testing Contract
+## Testing Contract {#testing-contract}
 
 Unit tests:
 

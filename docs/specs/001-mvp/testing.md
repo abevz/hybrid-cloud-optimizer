@@ -49,6 +49,33 @@ Unit test targets include:
 
 Use table-driven tests with named subtests.
 
+## Coverage Targets
+
+| Package | Target | Rationale |
+|---------|--------|-----------|
+| `internal/config` | ≥ 90% | small surface; high blast radius (start-time validation) |
+| `internal/scheduler` | ≥ 80% | pure business logic; table-driven tests are cheap |
+| `internal/cost` | ≥ 75% | external API; mock-driven testing |
+| `internal/healthcheck` | ≥ 75% | network-bound; covers Healthy/Unhealthy/Unknown states |
+| `internal/karpenter` | ≥ 70% | Kubernetes API interactions; envtest-driven |
+| `internal/controller` | ≥ 70% | reconciler glue; envtest-driven |
+
+Coverage is measured by `go test -cover`. Falling below the target on `main`
+should fail CI.
+
+## Test → Requirement Map
+
+| Test File | Tests | Requirement | Detailed-Design Anchor |
+|-----------|-------|-------------|------------------------|
+| `internal/config/config_test.go` | defaults, threshold pair validation, env override, missing VPN endpoint | NFR-004, NFR-005, FR-003 | [#config-inventory](detailed-design.md#config-inventory) |
+| `internal/scheduler/decision_test.go` | placement matrix, hysteresis, budget blocking, VPN gate | FR-002, FR-003, FR-005 | [#scheduler-interfaces](detailed-design.md#scheduler-interfaces) |
+| `internal/scheduler/errors_test.go` | typed error classification and retry intervals | FR-005, FR-008 | [#error-semantics](detailed-design.md#error-semantics) |
+| `internal/cost/aws_pricing_client_test.go` | on-demand parse, spot discount, cache hit/miss | FR-004 | [#scheduler-interfaces](detailed-design.md#scheduler-interfaces) |
+| `internal/healthcheck/vpn_test.go` | Healthy/Unhealthy/Unknown outcomes | FR-005 | [#error-semantics](detailed-design.md#error-semantics) |
+| `internal/karpenter/nodepool_test.go` | create, update, delete, owner reference, version assertion | FR-006 ([P-003](constitution.md)) | [#karpenter-contract](detailed-design.md#karpenter-contract) |
+| `internal/controller/hybridworkload_controller_test.go` | first reconcile writes status, dry-run path, finalizer | FR-007, FR-008 | [#controller-flow](detailed-design.md#controller-flow) |
+| `test/e2e/e2e_test.go` | kind: install CRDs, apply sample, observe status | NFR-004 | [#testing-contract](detailed-design.md#testing-contract) |
+
 ## Integration Tests
 
 Integration tests use envtest for controller-runtime reconciliation and
@@ -82,6 +109,24 @@ E2E tests should cover:
 - applying a sample HybridWorkload
 - observing status decisions
 - validating dry-run behavior
+
+## CI Plan
+
+| Workflow File | Job | Gate |
+|---------------|-----|------|
+| `.github/workflows/test.yml` | `make test` (unit + envtest) | merge blocker on PRs to `main` |
+| `.github/workflows/lint.yml` | `golangci-lint`, `make manifests` drift check | merge blocker |
+| `.github/workflows/test-e2e.yml` | `make test-e2e` on kind | merge blocker on PRs touching `internal/controller`, `config/`, `cmd/` |
+
+CI rules:
+
+- `make manifests` MUST be a no-op on a clean checkout. Drift between markers
+  and generated YAML fails the build.
+- Lint configuration lives in `.golangci.yml`. Adding a new linter requires a
+  PR against the constitution (review the Amendment Log).
+- The Karpenter version assertion test (see
+  [detailed-design.md#karpenter-contract](detailed-design.md#karpenter-contract))
+  runs in `make test` and fails the build on version skew.
 
 ## Manual Verification
 
