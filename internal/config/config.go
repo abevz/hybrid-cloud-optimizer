@@ -2,9 +2,13 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+
+	k8svalidation "k8s.io/apimachinery/pkg/util/validation"
 )
 
 // Config holds all application configuration
@@ -26,29 +30,45 @@ type Config struct {
 
 	// Logging
 	LogLevel string // debug, info, warn, error
-
-	// Metrics
-	MetricsAddr string // :8080
-	ProbeAddr   string // :8081
 }
 
 // LoadConfig reads configuration from environment variables
 func LoadConfig() (*Config, error) {
+	var errs []error
+
+	proxmoxScaleOutThreshold, err := lookupFloat("PROXMOX_SCALE_OUT_THRESHOLD", 0.85)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	proxmoxScaleBackThreshold, err := lookupFloat("PROXMOX_SCALE_BACK_THRESHOLD", 0.70)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	karpenterEnabled, err := lookupBool("KARPENTER_ENABLED", true)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
 	cfg := &Config{
-		AWSRegion:                 getEnv("AWS_REGION", "us-east-1"),
-		AWSPricingAPIRegion:       "us-east-1", // Pricing API global endpoint
-		ProxmoxScaleOutThreshold:  getEnvFloat("PROXMOX_SCALE_OUT_THRESHOLD", 0.85),
-		ProxmoxScaleBackThreshold: getEnvFloat("PROXMOX_SCALE_BACK_THRESHOLD", 0.70),
-		VPNEndpoint:               getEnv("VPN_ENDPOINT", "10.0.1.1:51820"),
-		KarpenterEnabled:          getEnvBool("KARPENTER_ENABLED", true),
-		KarpenterNamespace:        getEnv("KARPENTER_NAMESPACE", "karpenter"),
-		LogLevel:                  getEnv("LOG_LEVEL", "info"),
-		MetricsAddr:               getEnv("METRICS_ADDR", ":8080"),
-		ProbeAddr:                 getEnv("PROBE_ADDR", ":8081"),
+		AWSRegion:           lookupString("AWS_REGION", "us-east-1"),
+		AWSPricingAPIRegion: lookupString("AWS_PRICING_API_REGION", "us-east-1"), // Pricing API global endpoint
+
+		ProxmoxScaleOutThreshold:  proxmoxScaleOutThreshold,
+		ProxmoxScaleBackThreshold: proxmoxScaleBackThreshold,
+		VPNEndpoint:               lookupString("VPN_ENDPOINT", "10.0.1.1:51820"),
+		KarpenterEnabled:          karpenterEnabled,
+		KarpenterNamespace:        lookupString("KARPENTER_NAMESPACE", "karpenter"),
+		LogLevel:                  strings.ToLower(lookupString("LOG_LEVEL", "info")),
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("invalid config: %w", errors.Join(errs...))
 	}
 
 	return cfg, nil
@@ -56,40 +76,78 @@ func LoadConfig() (*Config, error) {
 
 // Validate checks configuration sanity
 func (c *Config) Validate() error {
+	var errs []error
+
+	if strings.TrimSpace(c.AWSRegion) == "" {
+		errs = append(errs, errors.New("AWS_REGION must be non-empty"))
+	}
+
+	if strings.TrimSpace(c.AWSPricingAPIRegion) == "" {
+		errs = append(errs, errors.New("AWS_PRICING_API_REGION must be non-empty"))
+	}
+
 	if c.ProxmoxScaleOutThreshold <= 0 || c.ProxmoxScaleOutThreshold > 1 {
-		return fmt.Errorf("PROXMOX_SCALE_OUT_THRESHOLD must be between 0 and 1")
+		errs = append(errs, errors.New("PROXMOX_SCALE_OUT_THRESHOLD must be > 0 and <= 1"))
 	}
+
 	if c.ProxmoxScaleBackThreshold <= 0 || c.ProxmoxScaleBackThreshold > 1 {
-		return fmt.Errorf("PROXMOX_SCALE_BACK_THRESHOLD must be between 0 and 1")
+		errs = append(errs, errors.New("PROXMOX_SCALE_BACK_THRESHOLD must be > 0 and <= 1"))
 	}
+
 	if c.ProxmoxScaleOutThreshold <= c.ProxmoxScaleBackThreshold {
-		return fmt.Errorf("PROXMOX_SCALE_OUT_THRESHOLD (%.2f) must be greater than PROXMOX_SCALE_BACK_THRESHOLD (%.2f)", c.ProxmoxScaleOutThreshold, c.ProxmoxScaleBackThreshold)
+		errs = append(errs, errors.New("PROXMOX_SCALE_OUT_THRESHOLD must be greater than PROXMOX_SCALE_BACK_THRESHOLD"))
 	}
-	return nil
+
+	if c.KarpenterEnabled && strings.TrimSpace(c.VPNEndpoint) == "" {
+		errs = append(errs, errors.New("VPN_ENDPOINT must be non-empty when KARPENTER_ENABLED=true"))
+	}
+
+	if problems := k8svalidation.IsDNS1123Label(c.KarpenterNamespace); len(problems) > 0 {
+		errs = append(errs, fmt.Errorf("KARPENTER_NAMESPACE must be an RFC 1123 label: %s", strings.Join(problems,
+			"; ")))
+	}
+
+	switch c.LogLevel {
+	case "debug", "info", "warn", "error":
+	default:
+		errs = append(errs, errors.New("LOG_LEVEL must be one of debug, info, warn, error"))
+	}
+
+	return errors.Join(errs...)
 }
 
 // Helper functions
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+func lookupString(key, defaultValue string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return defaultValue
 	}
-	return defaultValue
+	return value
 }
 
-func getEnvFloat(key string, defaultValue float64) float64 {
-	if value := os.Getenv(key); value != "" {
-		if parsed, err := strconv.ParseFloat(value, 64); err == nil {
-			return parsed
-		}
+func lookupFloat(key string, defaultValue float64) (float64, error) {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return defaultValue, nil
 	}
-	return defaultValue
+
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a float64: %w", key, err)
+	}
+
+	return parsed, nil
 }
 
-func getEnvBool(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
-		if parsed, err := strconv.ParseBool(value); err == nil {
-			return parsed
-		}
+func lookupBool(key string, defaultValue bool) (bool, error) {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return defaultValue, nil
 	}
-	return defaultValue
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("%s must be a bool: %w", key, err)
+	}
+
+	return parsed, nil
 }

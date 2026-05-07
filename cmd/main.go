@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	costv1alpha1 "github.com/abevz/hybrid-cloud-optimizer/api/v1alpha1"
+	"github.com/abevz/hybrid-cloud-optimizer/internal/config"
 	"github.com/abevz/hybrid-cloud-optimizer/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
@@ -86,6 +87,14 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	appConfig, err := config.LoadConfig()
+	if err != nil {
+		setupLog.Error(err, "Failed to load configuration")
+		os.Exit(1)
+	}
+
+	_ = appConfig
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will

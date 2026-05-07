@@ -52,13 +52,13 @@ Goal: establish a compilable operator skeleton and API shape.
       Blocks: [T017, T019]
       Blocked by: [T003, T005]
 
-- [ ] T007 [P] Implement typed config loading from [detailed-design.md#config-inventory](detailed-design.md#config-inventory).
+- [x] T007 [P] Implement typed config loading from [detailed-design.md#config-inventory](detailed-design.md#config-inventory).
       Requirement: NFR-005, FR-003 (defaults for thresholds)
-      Acceptance: `internal/config.LoadConfig()` returns a typed struct with all 10 fields populated; invalid env input returns an aggregated error; `cmd/main.go` calls `LoadConfig()` before scheme registration.
+      Acceptance: `internal/config.LoadConfig()` returns a typed struct with all 8 documented environment- backed fields populated; invalid env input returns an aggregated error; `cmd/main.go` calls `LoadConfig()` after flag parsing and logger setup, and before controller-runtime bootstrap and `ctrl.NewManager(...)`.
       Blocks: [T010, T014, T023]
       Blocked by: []
 
-- [ ] T008 [P] Add unit tests for config loading and validation.
+- [x] T008 [P] Add unit tests for config loading and validation.
       Requirement: NFR-004, NFR-005
       Acceptance: `go test ./internal/config/...` passes ≥ 90% coverage; cases include defaults, valid override, invalid threshold pair, missing VPN endpoint when Karpenter enabled.
       Blocks: []

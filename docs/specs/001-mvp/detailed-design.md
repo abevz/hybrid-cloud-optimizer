@@ -173,8 +173,11 @@ value not overridden by an environment variable.
 | `KARPENTER_ENABLED` | bool | `true` | n/a | T018a |
 | `KARPENTER_NAMESPACE` | string | `karpenter` | RFC 1123 label | T018a |
 | `LOG_LEVEL` | string | `info` | one of `debug`, `info`, `warn`, `error` | T007, T023 |
-| `METRICS_ADDR` | string | `:8080` | `host:port` | T023 |
-| `PROBE_ADDR` | string | `:8081` | `host:port` | T024 |
+
+Controller process bootstrap settings are configured via CLI flags in `cmd/main.go`,
+not via `internal/config`. This includes metrics bind address, probe bind address,
+leader election, metrics TLS settings, webhook TLS settings, and the HTTP/2
+enablement toggle.
 
 ### Validation Rules
 
@@ -188,11 +191,13 @@ value not overridden by an environment variable.
 
 ### Wiring
 
+- `internal/config.LoadConfig()` loads environment-backed domain configuration once at startup.
+- `LoadConfig()` returns the typed struct or an aggregated validation error.
+- Controller process bootstrap options remain CLI flags in `cmd/main.go` and are applied before
+`ctrl.NewManager(...)`.
 - Core services receive config through constructors. Dependency injection, if
   used, stays in `provider.go` files and the composition root (see
   [P-001](constitution.md), [P-006](constitution.md)).
-- `internal/config.LoadConfig()` returns the typed struct or an aggregated
-  validation error.
 
 ## Scheduler Interfaces And Decision Contract {#scheduler-interfaces}
 
