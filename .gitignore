@@ -49,3 +49,12 @@ coverage.html
 *.bak
 *.tmp
 *~
+
+# Coverage artifacts (accidental)
+cover.out
+
+# Local dev tools
+bacon.toml
+nvim.log
+.antigravitycli/
+.codex
